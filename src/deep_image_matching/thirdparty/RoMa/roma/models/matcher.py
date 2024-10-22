@@ -569,9 +569,9 @@ class RegressionMatcher(nn.Module):
             return good_matches, good_certainty
         density = kde(good_matches, std=0.1)
         p = 1 / (density + 1)
-        p[density < 10] = (
-            1e-7  # Basically should have at least 10 perfect neighbours, or around 100 ok ones
-        )
+        p[
+            density < 10
+        ] = 1e-7  # Basically should have at least 10 perfect neighbours, or around 100 ok ones
         balanced_samples = torch.multinomial(
             p, num_samples=min(num, len(good_certainty)), replacement=False
         )

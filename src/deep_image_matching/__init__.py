@@ -44,4 +44,6 @@ from .pairs_generator import PairsGenerator
 from .constants import *
 from .config import Config
 
-print("Deep Image Matching loaded in {:.3f} seconds.".format(time() - time_dict["start"]))
+print(
+    "Deep Image Matching loaded in {:.3f} seconds.".format(time() - time_dict["start"])
+)

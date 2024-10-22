@@ -26,7 +26,9 @@ class R2D2(BaseModel):
 
     def _init(self, conf):
         model_fn = r2d2_path / "models" / conf["model_name"]
-        self.norm_rgb = tvf.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        self.norm_rgb = tvf.Normalize(
+            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+        )
         self.net = load_network(model_fn)
         self.detector = NonMaxSuppression(
             rel_thr=conf["reliability_threshold"],

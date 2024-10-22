@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from typing import Optional
 
 from .extractor_base import ExtractorBase, FeaturesDict
 
@@ -32,7 +33,14 @@ class SIFTExtractor(ExtractorBase):
             sigma=cfg["sigma"],
         )
 
-    def _extract(self, image: np.ndarray) -> np.ndarray:
+    def _extract(
+        self, image: np.ndarray, mask: Optional[np.ndarray] = None
+    ) -> np.ndarray:
+        if mask is not None:
+            # Apply the mask to the image
+            masked_image = np.ma.masked_array(image, mask=~mask)
+            image = masked_image.filled(0)  # Fill masked areas with zeros
+
         kp, des = self._extractor.detectAndCompute(image, None)
         if kp:
             kpts = cv2.KeyPoint_convert(kp)
@@ -44,7 +52,19 @@ class SIFTExtractor(ExtractorBase):
                 0,
             )
 
-        # Convert tensors to numpy arrays
+        if mask is not None:
+            # Filter keypoints and descriptors based on the mask
+            valid_keypoints = []
+            valid_descriptors = []
+            for i, (x, y) in enumerate(kpts):
+                if mask[int(y), int(x)]:
+                    valid_keypoints.append([x, y])
+                    valid_descriptors.append(des[:, i])
+
+            kpts = np.array(valid_keypoints)
+            des = np.array(valid_descriptors).T
+
+        # Convert to FeaturesDict
         feats = FeaturesDict(keypoints=kpts, descriptors=des)
 
         return feats

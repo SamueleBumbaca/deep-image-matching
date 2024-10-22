@@ -10,13 +10,15 @@ from deep_image_matching.utils.database import (
     pair_id_to_image_ids,
 )
 
+
 def generate_pairs(imgs_dir):
     pairs = []
     n_images = len(os.listdir(imgs_dir))
-    for i in range(n_images-1):
-        if i%2 == 0:
-            pairs.append((i+1, i+2))
+    for i in range(n_images - 1):
+        if i % 2 == 0:
+            pairs.append((i + 1, i + 2))
     return pairs
+
 
 class ShowPairMatches:
     def __init__(
@@ -89,8 +91,8 @@ class ShowPairMatches:
             im1 = self.imgs_dict["data"][1]
             id1 = inverted_dict[im1]
 
-        keypoints0 = self.keypoints[id0][:,:2]
-        keypoints1 = self.keypoints[id1][:,:2]
+        keypoints0 = self.keypoints[id0][:, :2]
+        keypoints1 = self.keypoints[id1][:, :2]
         print(f"Img {id0}: kpts shape = {keypoints0.shape}")
         print(f"Img {id1}: kpts shape = {keypoints1.shape}")
         print("raw matches shape", np.shape(self.matches[(id0, id1)]))
@@ -191,7 +193,10 @@ def parse_args():
         "-o", "--output", type=str, help="Path to output folder", required=True
     )
     parser.add_argument(
-        "--all", action='store_true', help="Export matches for all pairs", required=False
+        "--all",
+        action="store_true",
+        help="Export matches for all pairs",
+        required=False,
     )
     parser.add_argument(
         "-i",
@@ -245,7 +250,7 @@ def main():
 
         show_pair_matches.LoadDatabase()
         show_pair_matches.ShowMatches()
-    
+
     else:
         pairs = generate_pairs(imgs_dir)
         print(pairs)

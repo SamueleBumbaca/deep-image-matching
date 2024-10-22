@@ -32,7 +32,9 @@ opencv_methods_mapping = {
 
 
 def log_result(inlMask: np.ndarray, method: str) -> None:
-    logger.debug(f"{method} found {inlMask.sum()} inliers ({inlMask.sum()*100/len(inlMask):.2f}%)")
+    logger.debug(
+        f"{method} found {inlMask.sum()} inliers ({inlMask.sum()*100/len(inlMask):.2f}%)"
+    )
 
 
 def log_error(err: Exception, method: str, fallback: bool = False) -> None:
@@ -73,12 +75,16 @@ def geometric_verification(
         try:
             method = GeometricVerification[method.upper()]
         except KeyError:
-            raise ValueError(f"Invalid Geometry Verification method. It must be one of {gv_names}")
+            raise ValueError(
+                f"Invalid Geometry Verification method. It must be one of {gv_names}"
+            )
     elif isinstance(method, int):
         try:
             method = GeometricVerification(method)
         except ValueError:
-            raise ValueError(f"Invalid Geometry Verification method. It must be one of {gv_names}")
+            raise ValueError(
+                f"Invalid Geometry Verification method. It must be one of {gv_names}"
+            )
     if not isinstance(method, GeometricVerification):
         raise ValueError(
             f"Invalid Geometry Verification method. It must be a GeometricVerification enum, a string with the method name among {gv_names} or an integer corresponding to the method index."
@@ -100,7 +106,9 @@ def geometric_verification(
         try:
             pydegensac = importlib.import_module("pydegensac")
         except ImportError:
-            logger.warning("Pydegensac not available. Using RANSAC (OpenCV) for geometric verification.")
+            logger.warning(
+                "Pydegensac not available. Using RANSAC (OpenCV) for geometric verification."
+            )
             fallback = True
 
     if method == GeometricVerification.PYDEGENSAC and not fallback:
@@ -126,7 +134,9 @@ def geometric_verification(
 
     if method == GeometricVerification.MAGSAC:
         try:
-            F, inliers = cv2.findFundamentalMat(kpts0, kpts1, cv2.USAC_MAGSAC, threshold, confidence, max_iters)
+            F, inliers = cv2.findFundamentalMat(
+                kpts0, kpts1, cv2.USAC_MAGSAC, threshold, confidence, max_iters
+            )
             inlMask = (inliers > 0).squeeze()
             if not quiet:
                 log_result(inlMask, method.name)
@@ -140,7 +150,9 @@ def geometric_verification(
         logger.debug(f"Method was set to {method}, trying to use it from OPENCV...")
         met = opencv_methods_mapping[method.name]
         try:
-            F, inliers = cv2.findFundamentalMat(kpts0, kpts1, met, threshold, confidence, max_iters)
+            F, inliers = cv2.findFundamentalMat(
+                kpts0, kpts1, met, threshold, confidence, max_iters
+            )
             inlMask = (inliers > 0).squeeze()
             if not quiet:
                 log_result(inlMask, method.name)
@@ -152,7 +164,9 @@ def geometric_verification(
     # Use RANSAC as fallback
     if method == GeometricVerification.RANSAC or fallback:
         try:
-            F, inliers = cv2.findFundamentalMat(kpts0, kpts1, cv2.RANSAC, threshold, confidence, max_iters)
+            F, inliers = cv2.findFundamentalMat(
+                kpts0, kpts1, cv2.RANSAC, threshold, confidence, max_iters
+            )
             inlMask = (inliers > 0).squeeze()
             if not quiet:
                 log_result(inlMask, method.name)

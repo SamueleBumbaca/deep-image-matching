@@ -1,0 +1,10 @@
+general:
+  camera_model: "simple-radial" # ["simple-pinhole", "pinhole", "simple-radial", "opencv"]
+  single_camera: True
+  geom_verification: ransac
+  min_inliers_per_pair: 10
+  min_inlier_ratio_per_pair: 0.25
+
+cam0:
+  camera_model: "simple-radial"
+  images : ""

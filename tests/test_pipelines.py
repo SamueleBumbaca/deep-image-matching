@@ -44,7 +44,12 @@ def create_config_file(config: dict, path: Path) -> Path:
 
 # Test matching strategies
 def test_sp_lg_bruteforce(data_dir):
-    prm = {"dir": data_dir, "pipeline": "superpoint+lightglue", "strategy": "bruteforce", "skip_reconstruction": True}
+    prm = {
+        "dir": data_dir,
+        "pipeline": "superpoint+lightglue",
+        "strategy": "bruteforce",
+        "skip_reconstruction": True,
+    }
     config = dim.Config(prm)
     matcher = dim.ImageMatcher(config)
     feature_path, match_path = matcher.run()
@@ -110,7 +115,9 @@ def test_sp_lg_custom_config(data_dir):
 # Test pycolmap reconstruction
 def test_pycolmap(data_dir):
     if platform.system() == "Windows":
-        pytest.skip("Pycolmap is not available on Windows. Please use WSL or Docker to run this test.")
+        pytest.skip(
+            "Pycolmap is not available on Windows. Please use WSL or Docker to run this test."
+        )
     prm = {
         "dir": data_dir,
         "pipeline": "superpoint+lightglue",

@@ -67,7 +67,9 @@ class DIR(BaseModel):
         desc = desc.unsqueeze(0)  # batch dimension
         if self.conf["whiten_name"]:
             pca = self.net.pca[self.conf["whiten_name"]]
-            desc = common.whiten_features(desc.cpu().numpy(), pca, **self.conf["whiten_params"])
+            desc = common.whiten_features(
+                desc.cpu().numpy(), pca, **self.conf["whiten_params"]
+            )
             desc = torch.from_numpy(desc)
 
         return {

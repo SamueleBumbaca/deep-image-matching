@@ -14,10 +14,13 @@ from pathlib import Path
 class SensorWidthDatabase:
     """Database class for sensor-width, reading data from a csv file."""
 
-    DEFAULT_SENSOR_DB_PATH = Path(__file__).resolve().parents[1] / "thirdparty/sensor_width_camera_database.csv"
-    DATABASE_URL = url = (
-        "https://raw.githubusercontent.com/openMVG/openMVG/6d6b1dd70bded094ba06024e481dd5a5c662dc83/src/openMVG/exif/sensor_width_database/sensor_width_camera_database.txt"
+    DEFAULT_SENSOR_DB_PATH = (
+        Path(__file__).resolve().parents[1]
+        / "thirdparty/sensor_width_camera_database.csv"
     )
+    DATABASE_URL = (
+        url
+    ) = "https://raw.githubusercontent.com/openMVG/openMVG/6d6b1dd70bded094ba06024e481dd5a5c662dc83/src/openMVG/exif/sensor_width_database/sensor_width_camera_database.txt"
     DATABASE_DETAIL_ULR = ""
 
     def __init__(self, csv_path: str = None):
@@ -26,7 +29,9 @@ class SensorWidthDatabase:
         if csv_path is None or not Path(csv_path).exists():
             csv_path = Path(self.DEFAULT_SENSOR_DB_PATH)
             url = self.DATABASE_URL
-            with urllib.request.urlopen(url) as response, open(csv_path, "wb") as out_file:
+            with urllib.request.urlopen(url) as response, open(
+                csv_path, "wb"
+            ) as out_file:
                 shutil.copyfileobj(response, out_file)
 
         if not csv_path.exists():

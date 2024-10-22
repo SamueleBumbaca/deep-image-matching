@@ -33,7 +33,9 @@ class D2Net(BaseModel):
             ]
             subprocess.run(cmd, check=True)
 
-        self.net = _D2Net(model_file=model_file, use_relu=conf["use_relu"], use_cuda=False)
+        self.net = _D2Net(
+            model_file=model_file, use_relu=conf["use_relu"], use_cuda=False
+        )
 
     def _forward(self, data):
         image = data["image"]
@@ -44,7 +46,9 @@ class D2Net(BaseModel):
         if self.conf["multiscale"]:
             keypoints, scores, descriptors = process_multiscale(image, self.net)
         else:
-            keypoints, scores, descriptors = process_multiscale(image, self.net, scales=[1])
+            keypoints, scores, descriptors = process_multiscale(
+                image, self.net, scales=[1]
+            )
         keypoints = keypoints[:, [1, 0]]  # (x, y) and remove the scale
 
         return {

@@ -63,7 +63,10 @@ def batch_to_device(batch: dict, device: str = "cpu", non_blocking: bool = True)
 
 def rbd(data: dict) -> dict:
     """Remove batch dimension from elements in data"""
-    return {k: v[0] if isinstance(v, (torch.Tensor, np.ndarray, list)) else v for k, v in data.items()}
+    return {
+        k: v[0] if isinstance(v, (torch.Tensor, np.ndarray, list)) else v
+        for k, v in data.items()
+    }
 
 
 def read_image(path: Path, grayscale: bool = False) -> np.ndarray:

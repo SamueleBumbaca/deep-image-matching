@@ -74,7 +74,8 @@ def test_valid_basic_arguments(data_dir):
         "max_keypoints": 20000,
     }
     assert all(
-        key in config.extractor and config.extractor[key] == expected_extractor[key] for key in expected_extractor
+        key in config.extractor and config.extractor[key] == expected_extractor[key]
+        for key in expected_extractor
     )
 
     # Check the matcher parameters
@@ -87,7 +88,10 @@ def test_valid_basic_arguments(data_dir):
         "width_confidence": 0.99,
         "filter_threshold": 0.1,
     }
-    assert all(key in config.matcher and config.matcher[key] == expected_matcher[key] for key in expected_matcher)
+    assert all(
+        key in config.matcher and config.matcher[key] == expected_matcher[key]
+        for key in expected_matcher
+    )
 
 
 if __name__ == "__main__":

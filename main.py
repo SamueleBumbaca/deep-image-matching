@@ -39,7 +39,7 @@ if matcher.matching in ["loftr", "se2loftr", "roma"]:
     LoftrRomaToMultiview(
         input_dir=feature_path.parent,
         output_dir=feature_path.parent,
-        image_dir=imgs_dir, 
+        image_dir=imgs_dir,
         img_ext=image_format,
         mask_dir=args.mask,
     )
@@ -103,7 +103,11 @@ if not config.general["skip_reconstruction"]:
         #     },
         # )
         reconst_opts = {}
-        refine_intrinsics = config.general["refine_intrinsics"] if "refine_intrinsics" in config.general else True
+        refine_intrinsics = (
+            config.general["refine_intrinsics"]
+            if "refine_intrinsics" in config.general
+            else True
+        )
 
         # Run reconstruction
         model = reconstruction.pycolmap_reconstruction(

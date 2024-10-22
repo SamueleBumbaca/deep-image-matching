@@ -52,7 +52,9 @@ def extractor_loader(root, model):
     # return getattr(module, 'Model')
 
 
-def save_features_h5(feature_path: Path, features: FeaturesDict, im_name: str, as_half: bool = True):
+def save_features_h5(
+    feature_path: Path, features: FeaturesDict, im_name: str, as_half: bool = True
+):
     # If as_half is True then the features are converted to float16.
     if as_half:
         feat_dtype = np.float16
@@ -82,7 +84,9 @@ def save_features_h5(feature_path: Path, features: FeaturesDict, im_name: str, a
                         compression_opts=9,
                     )
                 else:
-                    raise TypeError(f"Features data must be of type np.ndarray, not {type(v)}")
+                    raise TypeError(
+                        f"Features data must be of type np.ndarray, not {type(v)}"
+                    )
 
         except OSError as error:
             if "No space left on device" in error.args[0]:
@@ -120,7 +124,9 @@ class ExtractorBase(metaclass=ABCMeta):
         """
         # If a custom config is passed, update the default config
         if not isinstance(custom_config, Config):
-            raise TypeError("Invalid config object. 'custom_config' must be a Config object")
+            raise TypeError(
+                "Invalid config object. 'custom_config' must be a Config object"
+            )
 
         # Update default config with custom config
         # NOTE: This is done to keep backward compatibility with the old config format that was a dictionary, it should be replaced with the new config object
@@ -139,14 +145,24 @@ class ExtractorBase(metaclass=ABCMeta):
         # NOTE: this is used for backward compatibility, it should be removed
         self._quality = self.config["general"]["quality"]
         self._tiling = self.config["general"]["tile_selection"]
-        logger.debug(f"Matching options: Quality: {self._quality.name} - Tiling: {self._tiling.name}")
+        logger.debug(
+            f"Matching options: Quality: {self._quality.name} - Tiling: {self._tiling.name}"
+        )
         logger.debug(f"Saving directory: {self.config['general']['output_dir']}")
 
         # Get device
-        self._device = "cuda" if torch.cuda.is_available() and not self.config["general"]["force_cpu"] else "cpu"
+        self._device = (
+            "cuda"
+            if torch.cuda.is_available() and not self.config["general"]["force_cpu"]
+            else "cpu"
+        )
         logger.debug(f"Running inference on device {self._device}")
 
-    def extract(self, img: Union[Image, Path, str]) -> np.ndarray:
+    def extract(
+        self,
+        img: Union[Image, Path, str],
+        mask: Optional[Union[Image, Path, str]] = None,
+    ) -> np.ndarray:
         """
         Extract features from an image. This is the main method of the feature extractor.
 
@@ -164,9 +180,28 @@ class ExtractorBase(metaclass=ABCMeta):
         elif isinstance(img, Path):
             im_path = img
         else:
-            raise TypeError("Invalid image path. 'img' must be a string, a Path or an Image object")
+            raise TypeError(
+                "Invalid image path. 'img' must be a string, a Path or an Image object"
+            )
         if not im_path.exists():
             raise ValueError(f"Image {im_path} does not exist")
+
+        if mask is not None:
+            if isinstance(mask, str):
+                mask_path = Path(mask)
+            elif isinstance(mask, Image):
+                mask_path = mask.path
+            elif isinstance(mask, Path):
+                mask_path = mask
+            else:
+                raise TypeError(
+                    "Invalid mask path. 'mask' must be a string, a Path or an Image object"
+                )
+            if not mask_path.exists():
+                raise ValueError(f"Mask {mask_path} does not exist")
+            mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
+            _mask = self._resize_image(self._quality, mask, interp=self.interp)
+            _mask = _mask > 0  # Ensure binary mask
 
         # Define feature path
         feature_path = self.config["general"]["output_dir"] / "features.h5"
@@ -183,14 +218,18 @@ class ExtractorBase(metaclass=ABCMeta):
 
         if self.config["general"]["tile_selection"] == TileSelection.NONE:
             # Extract features from the whole image
-            features = self._extract(image_)
+            features = self._extract(image_, mask=_mask if mask is not None else None)
             # features["feature_path"] = str(feature_path)
             # features["im_path"] = str(im_path)
-            features["tile_idx"] = np.zeros(features["keypoints"].shape[0], dtype=np.float32)
+            features["tile_idx"] = np.zeros(
+                features["keypoints"].shape[0], dtype=np.float32
+            )
 
         else:
             # Extract features by tiles
-            features = self._extract_by_tile(image_, select_unique=True)
+            features = self._extract_by_tile(
+                image_, select_unique=True, mask=_mask if mask is not None else None
+            )
             # features["feature_path"] = str(feature_path)
             # features["im_path"] = str(im_path)
         logger.debug(f"Extracted {len(features['keypoints'])} keypoints")
@@ -226,7 +265,7 @@ class ExtractorBase(metaclass=ABCMeta):
         return feature_path
 
     @abstractmethod
-    def _extract(self, image: np.ndarray) -> dict:
+    def _extract(self, image: np.ndarray, mask: Optional[np.ndarray] = None) -> dict:
         """
         Extract features from an image. This is called by ` extract ` method to extract features from the image. This method must be implemented by subclasses.
 
@@ -251,7 +290,12 @@ class ExtractorBase(metaclass=ABCMeta):
             "Subclasses should implement _frame2tensor method to adapt the input image to the required format!"
         )
 
-    def _extract_by_tile(self, image: np.ndarray, select_unique: bool = True):
+    def _extract_by_tile(
+        self,
+        image: np.ndarray,
+        select_unique: bool = True,
+        mask: Optional[np.ndarray] = None,
+    ):
         """
         Extract features from an image by tiles. This is called by :meth:`extract` to extract features from the image.
 
@@ -263,11 +307,18 @@ class ExtractorBase(metaclass=ABCMeta):
         tile_size = self.config["general"]["tile_size"]
         overlap = self.config["general"]["tile_overlap"]
         tiler = Tiler(tiling_mode="size")
-        tiles, tiles_origins, padding = tiler.compute_tiles_by_size(input=image, window_size=tile_size, overlap=overlap)
-
+        tiles, tiles_origins, padding = tiler.compute_tiles_by_size(
+            input=image, window_size=tile_size, overlap=overlap
+        )
+        if mask is not None:
+            mask_tiles, _, _ = tiler.compute_tiles_by_size(
+                input=mask, window_size=tile_size, overlap=overlap
+            )
         # Initialize empty arrays
         kpts_full = np.array([], dtype=np.float32).reshape(0, 2)
-        descriptors_full = np.array([], dtype=np.float32).reshape(self.descriptor_size, 0)
+        descriptors_full = np.array([], dtype=np.float32).reshape(
+            self.descriptor_size, 0
+        )
         scores_full = np.array([], dtype=np.float32)
         tile_idx_full = np.array([], dtype=np.float32)
 
@@ -276,7 +327,14 @@ class ExtractorBase(metaclass=ABCMeta):
             logger.debug(f"  - Extracting features from tile: {idx}")
 
             # Extract features in tile
-            feat_tile = self._extract(tile)
+            if mask is not None:
+                mask_tile = mask_tiles[idx]
+                if np.count_nonzero(mask_tile) > 0:
+                    feat_tile = self._extract(tile, mask=mask_tile)
+                else:
+                    feat_tile = {"keypoints": np.array([]), "descriptors": np.array([])}
+            else:
+                feat_tile = self._extract(tile)
             kp_tile = feat_tile["keypoints"]
             des_tile = feat_tile["descriptors"]
             if "scores" in feat_tile:
@@ -303,16 +361,16 @@ class ExtractorBase(metaclass=ABCMeta):
 
             # Check if any keypoints are outside the original image (non-padded) or too close to the border
             border_thr = 2  # Adjust this threshold as needed
-            mask = (
+            border_mask = (
                 (kp_tile[:, 0] >= border_thr)
                 & (kp_tile[:, 0] < image.shape[1] - border_thr)
                 & (kp_tile[:, 1] >= border_thr)
                 & (kp_tile[:, 1] < image.shape[0] - border_thr)
             )
-            kp_tile = kp_tile[mask]
-            des_tile = des_tile[:, mask]
+            kp_tile = kp_tile[border_mask]
+            des_tile = des_tile[:, border_mask]
             if scor_tile is not None:
-                scor_tile = scor_tile[mask]
+                scor_tile = scor_tile[border_mask]
 
             if len(kp_tile) > 0:
                 kpts_full = np.vstack((kpts_full, kp_tile))
@@ -345,7 +403,9 @@ class ExtractorBase(metaclass=ABCMeta):
 
         return features
 
-    def _resize_image(self, quality: Quality, image: np.ndarray, interp: str = "cv2_area") -> Tuple[np.ndarray]:
+    def _resize_image(
+        self, quality: Quality, image: np.ndarray, interp: str = "cv2_area"
+    ) -> Tuple[np.ndarray]:
         """
         Resize images based on the specified quality.
 
@@ -365,7 +425,9 @@ class ExtractorBase(metaclass=ABCMeta):
         new_size = get_size_by_quality(quality, image.shape[:2])
         return resize_image(image, (new_size[1], new_size[0]), interp=interp)
 
-    def _resize_features(self, quality: Quality, features: FeaturesDict) -> Tuple[FeaturesDict]:
+    def _resize_features(
+        self, quality: Quality, features: FeaturesDict
+    ) -> Tuple[FeaturesDict]:
         """
         Resize features based on the specified quality.
 

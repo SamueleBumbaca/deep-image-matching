@@ -7,13 +7,12 @@ from PIL import Image
 
 from deep_image_matching import logger
 import rasterio as rio
- 
-  
+
+
 def load_img(
     path_to_img: str,
     reader: str,
 ):
-
     """
     Load an image from the given path using the specified reader.
 
@@ -39,7 +38,9 @@ def load_img(
     return img
 
 
-def convert_images(input_folder, output_folder, target_format, normalize, method, reader):
+def convert_images(
+    input_folder, output_folder, target_format, normalize, method, reader
+):
     """
     Convert images in a folder to a target image format using OpenCV.
 
@@ -150,7 +151,8 @@ if __name__ == "__main__":
         "output_folder", help="Path to the folder where converted images will be saved."
     )
     parser.add_argument(
-        "target_format", help="Target image format (e.g., 'png', 'jpg', 'jpeg', 'tiff')."
+        "target_format",
+        help="Target image format (e.g., 'png', 'jpg', 'jpeg', 'tiff').",
     )
     parser.add_argument(
         "--normalize",

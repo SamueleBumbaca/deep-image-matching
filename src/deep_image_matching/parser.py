@@ -70,6 +70,7 @@ def parse_cli() -> dict:
     parser.add_argument(
         "-mask",
         "--mask_directory",
+        type=str,
         help="Path to masks folder. Masks are supposed to have the same name as the images, but with .png extension.",
         default=None,
     )

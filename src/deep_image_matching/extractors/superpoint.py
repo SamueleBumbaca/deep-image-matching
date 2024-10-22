@@ -4,6 +4,7 @@ from copy import copy
 import numpy as np
 import torch
 from torch import nn
+from typing import Optional
 
 from ..thirdparty.SuperGluePretrainedNetwork.models import superpoint
 from .extractor_base import ExtractorBase
@@ -21,7 +22,9 @@ def sample_descriptors_fix_sampling(keypoints, descriptors, s: int = 8):
     descriptors = torch.nn.functional.grid_sample(
         descriptors, keypoints.view(b, 1, -1, 2), mode="bilinear", align_corners=False
     )
-    descriptors = torch.nn.functional.normalize(descriptors.reshape(b, c, -1), p=2, dim=1)
+    descriptors = torch.nn.functional.normalize(
+        descriptors.reshape(b, c, -1), p=2, dim=1
+    )
     return descriptors
 
 
@@ -103,17 +106,24 @@ class SuperPointExtractor(ExtractorBase):
         self._extractor = SuperPoint(SP_cfg).eval().to(self._device)
 
     @torch.no_grad()
-    def _extract(self, image: np.ndarray) -> np.ndarray:
+    def _extract(
+        self, image: np.ndarray, mask: Optional[np.ndarray] = None
+    ) -> np.ndarray:
         """
         Extract features from an image using the SuperPoint model.
 
         Args:
             image (np.ndarray): The input image as a numpy array.
+            mask (Optional[np.ndarray]): The mask to apply to the image.
 
         Returns:
             np.ndarray: A dictionary containing the extracted features. The keys represent different feature types, and the values are numpy arrays.
-
         """
+        if mask is not None:
+            # Apply the mask to the image
+            masked_image = np.ma.masked_array(image, mask=~mask)
+            image = masked_image.filled(0)  # Fill masked areas with zeros
+
         # Convert image from numpy array to tensor
         image_ = self._frame2tensor(image, self._device)
 
@@ -121,9 +131,26 @@ class SuperPointExtractor(ExtractorBase):
         feats = self._extractor({"image": image_})
 
         # Remove elements from list/tuple
-        feats = {k: v[0] if isinstance(v, (list, tuple)) else v for k, v in feats.items()}
+        feats = {
+            k: v[0] if isinstance(v, (list, tuple)) else v for k, v in feats.items()
+        }
         # Convert tensors to numpy arrays
         feats = {k: v.cpu().numpy() for k, v in feats.items()}
+
+        if mask is not None:
+            keypoints = feats["keypoints"]
+            descriptors = feats["descriptors"]
+
+            # Filter keypoints and descriptors based on the mask
+            valid_keypoints = []
+            valid_descriptors = []
+            for i, (x, y) in enumerate(keypoints):
+                if mask[int(y), int(x)]:
+                    valid_keypoints.append([x, y])
+                    valid_descriptors.append(descriptors[i])
+
+            feats["keypoints"] = np.array(valid_keypoints)
+            feats["descriptors"] = np.array(valid_descriptors)
 
         return feats
 

@@ -25,7 +25,9 @@ def test_compute_tiles_by_size_no_overlap_no_padding(tiler):
     window_size = 50
     overlap = 0
 
-    tiles, origins, padding = tiler.compute_tiles_by_size(input_image, window_size, overlap)
+    tiles, origins, padding = tiler.compute_tiles_by_size(
+        input_image, window_size, overlap
+    )
 
     # Assert the output types and shapes
     assert isinstance(tiles, dict)
@@ -58,7 +60,9 @@ def test_compute_tiles_by_size_no_overlap_padding(tiler):
     window_size = 40
     overlap = 0
 
-    tiles, origins, padding = tiler.compute_tiles_by_size(input_image, window_size, overlap)
+    tiles, origins, padding = tiler.compute_tiles_by_size(
+        input_image, window_size, overlap
+    )
 
     # Assert the output types and shapes
     assert isinstance(tiles, dict)
@@ -90,7 +94,9 @@ def test_compute_tiles_by_size_overlap_no_padding(tiler):
     window_size = 50
     overlap = 10
 
-    tiles, origins, padding = tiler.compute_tiles_by_size(input_image, window_size, overlap)
+    tiles, origins, padding = tiler.compute_tiles_by_size(
+        input_image, window_size, overlap
+    )
 
     # Assert the output types and shapes
     assert isinstance(tiles, dict)
@@ -123,7 +129,9 @@ def test_compute_tiles_by_size_with_torch_tensor(tiler):
     window_size = (50, 50)
     overlap = (0, 0)
 
-    tiles, origins, padding = tiler.compute_tiles_by_size(input_image, window_size, overlap)
+    tiles, origins, padding = tiler.compute_tiles_by_size(
+        input_image, window_size, overlap
+    )
 
     # Assert the output types and shapes
     assert isinstance(tiles, dict)

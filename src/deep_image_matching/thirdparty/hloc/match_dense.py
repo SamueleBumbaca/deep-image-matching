@@ -241,7 +241,9 @@ def match_dense(
     model = Model(conf["model"]).eval().to(device)
 
     dataset = ImagePairDataset(image_dir, conf["preprocessing"], pairs)
-    loader = torch.utils.data.DataLoader(dataset, num_workers=16, batch_size=1, shuffle=False)
+    loader = torch.utils.data.DataLoader(
+        dataset, num_workers=16, batch_size=1, shuffle=False
+    )
 
     logger.info("Performing dense matching...")
     with h5py.File(str(match_path), "a") as fd:
@@ -287,8 +289,12 @@ def match_dense(
 
 
 # default: quantize all!
-def load_keypoints(conf: Dict, feature_paths_refs: List[Path], quantize: Optional[set] = None):
-    name2ref = {n: i for i, p in enumerate(feature_paths_refs) for n in list_h5_names(p)}
+def load_keypoints(
+    conf: Dict, feature_paths_refs: List[Path], quantize: Optional[set] = None
+):
+    name2ref = {
+        n: i for i, p in enumerate(feature_paths_refs) for n in list_h5_names(p)
+    }
 
     existing_refs = set(name2ref.keys())
     if quantize is None:
@@ -426,7 +432,10 @@ def aggregate_matches(
 
     if len(required_queries) > 0:
         avg_kp_per_image = round(n_kps / len(required_queries), 1)
-        logger.info(f"Finished assignment, found {avg_kp_per_image} " f"keypoints/image (avg.), total {n_kps}.")
+        logger.info(
+            f"Finished assignment, found {avg_kp_per_image} "
+            f"keypoints/image (avg.), total {n_kps}."
+        )
     return cpdict
 
 
@@ -478,7 +487,9 @@ def match_and_assign(
     pairs = find_unique_new_pairs(pairs, None if overwrite else match_path)
     required_queries = set(sum(pairs, ()))
 
-    name2ref = {n: i for i, p in enumerate(feature_paths_refs) for n in list_h5_names(p)}
+    name2ref = {
+        n: i for i, p in enumerate(feature_paths_refs) for n in list_h5_names(p)
+    }
     existing_refs = required_queries.intersection(set(name2ref.keys()))
 
     # images which require feature extraction
@@ -501,7 +512,9 @@ def match_and_assign(
     logger.info("Assigning matches...")
 
     # Pre-load existing keypoints
-    cpdict, bindict = load_keypoints(conf, feature_paths_refs, quantize=required_queries)
+    cpdict, bindict = load_keypoints(
+        conf, feature_paths_refs, quantize=required_queries
+    )
 
     # Reassign matches by aggregation
     cpdict = aggregate_matches(
@@ -533,7 +546,9 @@ def main(
     max_kps: Optional[int] = 8192,
     overwrite: bool = False,
 ) -> Path:
-    logger.info("Extracting semi-dense features with configuration:" f"\n{pprint.pformat(conf)}")
+    logger.info(
+        "Extracting semi-dense features with configuration:" f"\n{pprint.pformat(conf)}"
+    )
 
     if features is None:
         features = "feats_"
@@ -541,11 +556,14 @@ def main(
     if isinstance(features, Path):
         features_q = features
         if matches is None:
-            raise ValueError("Either provide both features and matches as Path" " or both as names.")
+            raise ValueError(
+                "Either provide both features and matches as Path" " or both as names."
+            )
     else:
         if export_dir is None:
             raise ValueError(
-                "Provide an export_dir if features and matches" f" are not file paths: {features}, {matches}."
+                "Provide an export_dir if features and matches"
+                f" are not file paths: {features}, {matches}."
             )
         features_q = Path(export_dir, f'{features}{conf["output"]}.h5')
         if matches is None:
@@ -560,7 +578,9 @@ def main(
     else:
         raise TypeError(str(features_ref))
 
-    match_and_assign(conf, pairs, image_dir, matches, features_q, features_ref, max_kps, overwrite)
+    match_and_assign(
+        conf, pairs, image_dir, matches, features_q, features_ref, max_kps, overwrite
+    )
 
     return features_q, matches
 
@@ -571,7 +591,9 @@ if __name__ == "__main__":
     parser.add_argument("--image_dir", type=Path, required=True)
     parser.add_argument("--export_dir", type=Path, required=True)
     parser.add_argument("--matches", type=Path, default=confs["loftr"]["output"])
-    parser.add_argument("--features", type=str, default="feats_" + confs["loftr"]["output"])
+    parser.add_argument(
+        "--features", type=str, default="feats_" + confs["loftr"]["output"]
+    )
     parser.add_argument("--conf", type=str, default="loftr", choices=list(confs.keys()))
     args = parser.parse_args()
     main(

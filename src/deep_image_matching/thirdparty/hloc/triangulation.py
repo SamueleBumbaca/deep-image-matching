@@ -31,7 +31,9 @@ class OutputCapture:
         sys.stdout.flush()
 
 
-def create_db_from_model(reconstruction: pycolmap.Reconstruction, database_path: Path) -> Dict[str, int]:
+def create_db_from_model(
+    reconstruction: pycolmap.Reconstruction, database_path: Path
+) -> Dict[str, int]:
     if database_path.exists():
         logger.warning("The database already exists, deleting it.")
         database_path.unlink()
@@ -57,7 +59,9 @@ def create_db_from_model(reconstruction: pycolmap.Reconstruction, database_path:
     return {image.name: i for i, image in reconstruction.images.items()}
 
 
-def import_features(image_ids: Dict[str, int], database_path: Path, features_path: Path):
+def import_features(
+    image_ids: Dict[str, int], database_path: Path, features_path: Path
+):
     logger.info("Importing features into the database...")
     db = COLMAPDatabase.connect(database_path)
 
@@ -103,7 +107,9 @@ def import_matches(
     db.close()
 
 
-def estimation_and_geometric_verification(database_path: Path, pairs_path: Path, verbose: bool = False):
+def estimation_and_geometric_verification(
+    database_path: Path, pairs_path: Path, verbose: bool = False
+):
     logger.info("Performing geometric verification of the matches...")
     with OutputCapture(verbose):
         with pycolmap.ostream():
@@ -163,7 +169,9 @@ def geometric_verification(
                 continue
 
             cam1_from_cam0 = image1.cam_from_world * image0.cam_from_world.inverse()
-            errors0, errors1 = compute_epipolar_errors(cam1_from_cam0, kps0[matches[:, 0]], kps1[matches[:, 1]])
+            errors0, errors1 = compute_epipolar_errors(
+                cam1_from_cam0, kps0[matches[:, 0]], kps1[matches[:, 1]]
+            )
             valid_matches = np.logical_and(
                 errors0 <= cam0.cam_from_img_threshold(noise0 * max_error),
                 errors1 <= cam1.cam_from_img_threshold(noise1 * max_error),
@@ -240,9 +248,15 @@ def main(
         if estimate_two_view_geometries:
             estimation_and_geometric_verification(database, pairs, verbose)
         else:
-            geometric_verification(image_ids, reference, database, features, pairs, matches)
-    reconstruction = run_triangulation(sfm_dir, database, image_dir, reference, verbose, mapper_options)
-    logger.info("Finished the triangulation with statistics:\n%s", reconstruction.summary())
+            geometric_verification(
+                image_ids, reference, database, features, pairs, matches
+            )
+    reconstruction = run_triangulation(
+        sfm_dir, database, image_dir, reference, verbose, mapper_options
+    )
+    logger.info(
+        "Finished the triangulation with statistics:\n%s", reconstruction.summary()
+    )
     return reconstruction
 
 
@@ -255,12 +269,15 @@ def parse_option_args(args: List[str], default_options) -> Dict[str, Any]:
         key, value = arg[:idx], arg[idx + 1 :]
         if not hasattr(default_options, key):
             raise ValueError(
-                f'Unknown option "{key}", allowed options and default values' f" for {default_options.summary()}"
+                f'Unknown option "{key}", allowed options and default values'
+                f" for {default_options.summary()}"
             )
         value = eval(value)
         target_type = type(getattr(default_options, key))
         if not isinstance(value, target_type):
-            raise ValueError(f'Incorrect type for option "{key}":' f" {type(value)} vs {target_type}")
+            raise ValueError(
+                f'Incorrect type for option "{key}":' f" {type(value)} vs {target_type}"
+            )
         options[key] = value
     return options
 
@@ -280,6 +297,8 @@ if __name__ == "__main__":
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args().__dict__
 
-    mapper_options = parse_option_args(args.pop("mapper_options"), pycolmap.IncrementalMapperOptions())
+    mapper_options = parse_option_args(
+        args.pop("mapper_options"), pycolmap.IncrementalMapperOptions()
+    )
 
     main(**args, mapper_options=mapper_options)
