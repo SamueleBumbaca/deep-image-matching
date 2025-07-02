@@ -11,9 +11,12 @@ from typing import Tuple
 import cv2
 import h5py
 import numpy as np
+import os
+import xml.etree.ElementTree as ET
 
-from ..utils.image import IMAGE_EXT
-from ..visualization import viz_matches_cv2
+# from ..utils.image import IMAGE_EXT
+IMAGE_EXT = [".jpg", ".JPG", ".png", ".PNG", ".tif", "TIF"]
+# from ..visualization import viz_matches_cv2
 
 logger = logging.getLogger("dim")
 
@@ -98,55 +101,55 @@ def get_matches(
     return x0y0, x1y1
 
 
-def show_micmac_matches(
-    file: Path,
-    image_dir: Path,
-    i0_name: Path = None,
-    i1_name: Path = None,
-    out: Path = None,
-    **kwargs,
-) -> np.ndarray:
-    """
-    Display the tie points between two images matched by a MicMac from the matches text file.
+# def show_micmac_matches(
+#     file: Path,
+#     image_dir: Path,
+#     i0_name: Path = None,
+#     i1_name: Path = None,
+#     out: Path = None,
+#     **kwargs,
+# ) -> np.ndarray:
+#     """
+#     Display the tie points between two images matched by a MicMac from the matches text file.
 
-    Args:
-        file (Path): The path to the file containing the matches.
-        image_dir (Path): The directory containing the images.
-        out (Path, optional): The path to save the output image. Defaults to None.
+#     Args:
+#         file (Path): The path to the file containing the matches.
+#         image_dir (Path): The directory containing the images.
+#         out (Path, optional): The path to save the output image. Defaults to None.
 
-    Returns:
-        np.ndarray: The output image with the matches visualized.
-    """
+#     Returns:
+#         np.ndarray: The output image with the matches visualized.
+#     """
 
-    file = Path(file)
-    if not file.exists():
-        raise FileNotFoundError(f"File {file} does not exist")
-    if not image_dir.exists():
-        raise FileNotFoundError(f"Image directory {image_dir} does not exist")
+#     file = Path(file)
+#     if not file.exists():
+#         raise FileNotFoundError(f"File {file} does not exist")
+#     if not image_dir.exists():
+#         raise FileNotFoundError(f"Image directory {image_dir} does not exist")
 
-    # Get the image names
-    if i0_name is None or i1_name is None:
-        i0_name = file.parent.name.replace("Pastis", "")
-        i1_name = file.name.replace(".txt", "")
-    if not (image_dir / i0_name).exists():
-        raise FileNotFoundError(f"Image {i0_name} does not exist in {image_dir}")
-    if not (image_dir / i1_name).exists():
-        raise FileNotFoundError(f"Image {i1_name} does not exist in {image_dir}")
+#     # Get the image names
+#     if i0_name is None or i1_name is None:
+#         i0_name = file.parent.name.replace("Pastis", "")
+#         i1_name = file.name.replace(".txt", "")
+#     if not (image_dir / i0_name).exists():
+#         raise FileNotFoundError(f"Image {i0_name} does not exist in {image_dir}")
+#     if not (image_dir / i1_name).exists():
+#         raise FileNotFoundError(f"Image {i1_name} does not exist in {image_dir}")
 
-    # Read the matches
-    x0y0, x1y1 = read_Homol_matches(file)
+#     # Read the matches
+#     x0y0, x1y1 = read_Homol_matches(file)
 
-    # Read the images
-    image0 = cv2.imread(str(image_dir / i0_name))
-    image1 = cv2.imread(str(image_dir / i1_name))
-    if image0 is None:
-        raise OSError(f"Unable to read image {i0_name}")
-    if image1 is None:
-        raise OSError(f"Unable to read image {i1_name}")
+#     # Read the images
+#     image0 = cv2.imread(str(image_dir / i0_name))
+#     image1 = cv2.imread(str(image_dir / i1_name))
+#     if image0 is None:
+#         raise OSError(f"Unable to read image {i0_name}")
+#     if image1 is None:
+#         raise OSError(f"Unable to read image {i1_name}")
 
-    out = viz_matches_cv2(image0, image1, x0y0, x1y1, out, **kwargs)
+#     out = viz_matches_cv2(image0, image1, x0y0, x1y1, out, **kwargs)
 
-    return out
+#     return out
 
 
 def export_tie_points(
@@ -214,6 +217,137 @@ def export_tie_points(
     logger.info(f"Exported tie points to {out_dir}")
 
 
+def create_LocalChantierDescripteur(
+    image_dir: Path,
+    out_dir: Path = "micmac",
+    img_ext: str = IMAGE_EXT,
+    exiftool_path: Path = None,
+):
+    """
+    Create a LocalChantierDescripteur file for MicMac processing in case no EXIF information is available in the images.
+
+    Args:
+        image_dir (Path): Directory containing the images.
+        out_dir (Path, optional): Output directory. Defaults to "micmac".
+        exiftool_path (Path, optional): Path to the ExifTool executable. Defaults to None.
+
+    Raises:
+        FileNotFoundError: If the ExifTool executable is not found.
+        Exception: If the LocalChantierDescripteur file cannot be created.
+    """
+
+    output_file = out_dir / "MicMac-LocalChantierDescripteur.xml"
+
+    # Predefined mapping of camera models to their pixel sizes (in mm)
+    camera_pixel_sizes = {
+        "IMX219": (
+            0.00112,
+            0.00112,
+        ),  # Example: (pixel width, pixel height) in millimeters
+        "OV5647": (0.0014, 0.0014),
+        "/base/soc/i2c0mux/i2c@1/imx219@10": (0.00112, 0.00112),
+        "/base/soc/i2c0mux/i2c@1/ov5647@36": (0.0014, 0.0014),
+        None: (0.0014, 0.0014),  # Default sensor size
+    }
+
+    # Predefined mapping of camera models to their focal lengths (in mm)
+    camera_focal_lengths = {
+        "IMX219": 3.04,  # Example: focal length in millimeters
+        "OV5647": 2.8,
+        "/base/soc/i2c0mux/i2c@1/imx219@10": 3.04,
+        "/base/soc/i2c0mux/i2c@1/ov5647@36": 2.8,
+        None: 2.8,  # Default focal length
+    }
+
+    # Try to find the ExifTool executable
+    if exiftool_path is None:
+        logger.info("ExifTool path not specified, trying to find it...")
+        exiftool_path = shutil.which("exiftool")
+        if not exiftool_path:
+            raise FileNotFoundError("ExifTool path not found")
+        logger.info(f"Found ExifTool executable at {exiftool_path}")
+
+    def get_exif_data(image_path):
+        result = subprocess.run(
+            ["exiftool", image_path], capture_output=True, text=True
+        )
+        exif_data = {}
+        for line in result.stdout.splitlines():
+            if ":" in line:
+                key, value = line.split(":", 1)
+                exif_data[key.strip()] = value.strip()
+        return exif_data
+
+    def create_xml(camera_info, output_file):
+        root = ET.Element("Global")
+        chantier = ET.SubElement(root, "ChantierDescripteur")
+        loc_cam_db = ET.SubElement(chantier, "LocCamDataBase")
+
+        for camera_model, (sensor_size, focal_length) in camera_info.items():
+            camera_entry = ET.SubElement(loc_cam_db, "CameraEntry")
+            ET.SubElement(camera_entry, "Name").text = camera_model
+            ET.SubElement(
+                camera_entry, "SzCaptMm"
+            ).text = f"{sensor_size[0]} {sensor_size[1]}"
+            ET.SubElement(camera_entry, "ShortName").text = camera_model
+
+        keyed_names = ET.SubElement(chantier, "KeyedNamesAssociations")
+        calcs = ET.SubElement(keyed_names, "Calcs")
+        ET.SubElement(calcs, "Arrite").text = "1 1"
+        direct = ET.SubElement(calcs, "Direct")
+        ET.SubElement(direct, "PatternTransform").text = ".*[jJ][pP][gG]"
+        ET.SubElement(direct, "CalcName").text = camera_model
+        ET.SubElement(keyed_names, "Key").text = "NKS-Assoc-STD-CAM"
+
+        keyed_names_foc = ET.SubElement(chantier, "KeyedNamesAssociations")
+        calcs_foc = ET.SubElement(keyed_names_foc, "Calcs")
+        ET.SubElement(calcs_foc, "Arrite").text = "1 1"
+        direct_foc = ET.SubElement(calcs_foc, "Direct")
+        ET.SubElement(direct_foc, "PatternTransform").text = ".*[jJ][pP][gG]"
+        ET.SubElement(direct_foc, "CalcName").text = str(focal_length)
+        ET.SubElement(keyed_names_foc, "Key").text = "NKS-Assoc-STD-FOC"
+
+        tree = ET.ElementTree(root)
+        tree.write(output_file, encoding="utf-8", xml_declaration=True)
+
+    camera_info = {}
+    image_paths = []
+
+    # Collect all image paths based on the extensions in img_ext
+    for ext in img_ext:
+        image_paths.extend(Path(image_dir).glob(f"*{ext}"))
+
+    # Get the EXIF data for each image
+    for image_path in image_paths:
+        exif_data = get_exif_data(image_path)
+        camera_model = exif_data.get("Camera Model Name")
+        sensor_width = exif_data.get("Exif Image Width")
+        sensor_height = exif_data.get("Exif Image Height")
+        focal_length = exif_data.get("Focal Length")
+
+        if camera_model and sensor_width and sensor_height:
+            pixel_size = camera_pixel_sizes.get(camera_model)
+            if pixel_size:
+                sensor_size = (
+                    float(sensor_width) * pixel_size[0],
+                    float(sensor_height) * pixel_size[1],
+                )  # Use pixel size in mm
+                if focal_length:
+                    focal_length_value = float(
+                        focal_length.split()[0]
+                    )  # Extract focal length value
+                else:
+                    focal_length_value = camera_focal_lengths.get(
+                        camera_model, camera_focal_lengths[None]
+                    )  # Use predefined focal length
+                camera_info[camera_model] = (sensor_size, focal_length_value)
+
+    create_xml(camera_info, output_file)
+
+
+# def create_OriNavBrut(mm3d OriConvert OriTxtInFile ExtOri_csv_path Nav-Brut NameCple=FileImagesNeighbour.xml)
+
+
 def export_to_micmac(
     image_dir: Path,
     features_h5: Path,
@@ -221,6 +355,7 @@ def export_to_micmac(
     out_dir: Path = "micmac",
     img_ext: str = IMAGE_EXT,
     run_Tapas: bool = False,
+    run_LocalChantierDescripteur: bool = False,
     micmac_path: Path = None,
 ):
     """
@@ -233,6 +368,7 @@ def export_to_micmac(
         out_dir (Path, optional): Output directory. Defaults to "micmac".
         img_ext (str, optional): Image file extension. Defaults to IMAGE_EXT.
         run_Tapas (bool, optional): Whether to run Tapas for relative orientation. Defaults to False.
+        run_LocalChantierDescripteur (bool, optional): Whether to create a LocalChantierDescripteur file for MicMac processing. Defaults to False.
         micmac_path (Path, optional): Path to the MicMac executable. If not provided, the function will try to find it. Defaults to None.
 
     Raises:
@@ -280,6 +416,11 @@ def export_to_micmac(
     # logger.info(
     #     f"Succesfully exported images and tie points ready for MICMAC processing to {out_dir}"
     # )
+
+    if run_LocalChantierDescripteur:
+        # Create a LocalChantierDescripteur file for MicMac processing
+        logger.info("Creating LocalChantierDescripteur file...")
+        create_LocalChantierDescripteur(image_dir, out_dir, img_ext)
 
     if run_Tapas:
         # Try to run MicMac
@@ -359,9 +500,16 @@ def main():
         "-x", "--img_ext", type=str, default=IMAGE_EXT, help="Image extension."
     )
     parser.add_argument(
+        "-run_T",
         "--run_Tapas",
         action="store_true",
         help="Run MicMac for estimating the relative orientation with Tapas.",
+    )
+    parser.add_argument(
+        "-run_LCD",
+        "--run_LocalChantierDescripteur",
+        action="store_true",
+        help="Create a LocalChantierDescripteur file for MicMac processing.",
     )
     parser.add_argument(
         "--micmac_path", type=str, default=None, help="Path to the MicMac executable."
@@ -375,6 +523,11 @@ def main():
     matches_h5 = Path(args.matches_h5)
     out_dir = Path(args.out_dir)
     micmac_path = None if args.micmac_path is None else Path(args.micmac_path)
+    # Ensure img_ext is a list
+    if isinstance(args.img_ext, str):
+        img_ext = [args.img_ext]
+    else:
+        img_ext = args.img_ext
 
     if not image_dir.exists():
         raise FileNotFoundError(f"Image directory {image_dir} does not exist")
@@ -394,8 +547,9 @@ def main():
         features_h5,
         matches_h5,
         out_dir,
-        args.img_ext,
+        img_ext,
         args.run_Tapas,
+        args.run_LocalChantierDescripteur,
         micmac_path,
     )
 

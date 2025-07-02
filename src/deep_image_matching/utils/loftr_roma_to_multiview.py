@@ -96,7 +96,7 @@ def add_matches(db, h5_path, fname_to_id):
                         warnings.warn(f"Pair {pair_id} ({id_1}, {id_2}) already added!")
                         continue
                     matches = group[key_2][()]
-                    # db.add_matches(id_1, id_2, matches)
+                    # db.add_matches(id_1, id_2, matches) # comment if any error
                     db.add_two_view_geometry(id_1, id_2, matches)
                     added.add(pair_id)
                     pbar.update(1)

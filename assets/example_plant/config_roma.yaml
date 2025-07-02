@@ -1,7 +1,7 @@
 # User configuration file
 
 general:
-  tile_size: (3280, 2464) # This setting is overwriten by the the upsample_res setting
+  #tile_size: (3280, 2464) # This setting is overwriten by the the upsample_res setting
   tile_overlap: 50
   geom_verification: none
   gv_threshold: 3
